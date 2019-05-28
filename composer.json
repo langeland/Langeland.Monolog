@@ -1,0 +1,14 @@
+{
+    "name": "langeland/monolog",
+    "type": "neos-package",
+    "description": "Monolog integration for Flow",
+    "require": {
+        "neos/flow": "~5.0 || dev-master",
+        "monolog/monolog": "^1.23"
+    },
+    "autoload": {
+        "psr-4": {
+            "Langeland\\Monolog\\": "Classes"
+        }
+    }
+}

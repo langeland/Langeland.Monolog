@@ -1,0 +1,6 @@
+Langeland\Monolog\LoggerFactory:
+  scope: singleton
+  autowiring: off
+
+Neos\Flow\Log\PsrLoggerFactoryInterface:
+  className: Langeland\Monolog\LoggerFactory

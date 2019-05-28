@@ -1,0 +1,35 @@
+Neos:
+  Flow:
+    log:
+      psr3:
+        loggerFactory: 'Langeland\Monolog\LoggerFactory'
+        'Langeland\Monolog\LoggerFactory':
+          # Settings for Flow's default loggers
+          systemLogger:
+            handler:
+              streamHandler:
+                className: 'Monolog\Handler\StreamHandler'
+                position: 100
+                arguments:
+                  0: '%FLOW_PATH_DATA%Logs/System.log'
+          securityLogger:
+            handler:
+              streamHandler:
+                className: 'Monolog\Handler\StreamHandler'
+                position: 100
+                arguments:
+                  0: '%FLOW_PATH_DATA%Logs/Security.log'
+          sqlLogger:
+            handler:
+              streamHandler:
+                className: 'Monolog\Handler\StreamHandler'
+                position: 100
+                arguments:
+                  0: '%FLOW_PATH_DATA%Logs/Query.log'
+          i18nLogger:
+            handler:
+              streamHandler:
+                className: 'Monolog\Handler\StreamHandler'
+                position: 100
+                arguments:
+                  0: '%FLOW_PATH_DATA%Logs/I18n.log'

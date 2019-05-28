@@ -1,0 +1,28 @@
+Neos:
+  Flow:
+    log:
+      psr3:
+        loggerFactory: Langeland\Monolog\LoggerFactory
+        'Langeland\Monolog\LoggerFactory':
+          # Settings for NEOS Flow's default loggers
+          systemLogger:
+            handler:
+              streamHandler:
+                arguments:
+                  0: '%FLOW_PATH_DATA%Logs/System_Testing.log'
+          securityLogger:
+            handler:
+              streamHandler:
+                arguments:
+                  0: '%FLOW_PATH_DATA%Logs/Security_Testing.log'
+          sqlLogger:
+            handler:
+              streamHandler:
+                arguments:
+                  0: '%FLOW_PATH_DATA%Logs/Query_Testing.log'
+          i18nLogger:
+            handler:
+              streamHandler:
+                arguments:
+                  0: '%FLOW_PATH_DATA%Logs/I18n_Testing.log'
+
