@@ -4,7 +4,7 @@
     "description": "Monolog integration for Flow",
     "require": {
         "neos/flow": "~5.0 || dev-master",
-        "monolog/monolog": "^1.23"
+        "monolog/monolog": "dev-master"
     },
     "autoload": {
         "psr-4": {
