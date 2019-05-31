@@ -1,4 +1,5 @@
 <?php
+
 namespace Langeland\Monolog;
 
 use Monolog\Handler\HandlerInterface;
@@ -19,12 +20,12 @@ class LoggerFactory implements PsrLoggerFactoryInterface
     /**
      * @var array
      */
-    protected $loggerInstances = [];
+    protected $instances = [];
 
     /**
      * @var array
      */
-    protected $handlerInstances = [];
+    protected $processorsInstances = [];
 
     /**
      * @var array
@@ -41,6 +42,30 @@ class LoggerFactory implements PsrLoggerFactoryInterface
     public function __construct(array $configuration = [])
     {
         $this->configuration = $configuration;
+    }
+
+    /**
+     * @param array $configuration
+     */
+    public function injectConfiguration(array $configuration)
+    {
+        $this->configuration = $configuration;
+    }
+
+    /**
+     * Home brew singleton because it is used so early.
+     *
+     * @return LoggerFactory
+     * @throws \Exception
+     */
+    public static function getInstance()
+    {
+        throw new \Exception('Not implemented', 1559241877);
+        if (static::$instance === null) {
+            static::$instance = new static();
+        }
+
+        return static::$instance;
     }
 
     /**
@@ -63,23 +88,44 @@ class LoggerFactory implements PsrLoggerFactoryInterface
             return $this->loggerInstances[$identifier];
         }
 
+        $logger = new Logger($identifier);
         $configuration = $this->configuration[$identifier];
+        $handlerSorter = new PositionalArraySorter($configuration);
 
-        $logger = new Logger($identifier);
-
-        $handlerSorter = new PositionalArraySorter($configuration['handler']);
         foreach ($handlerSorter->toArray() as $index => $handlerConfiguration) {
+            $formatter = null;
             $handler = null;
-            if (is_string($handlerConfiguration)) {
-                $handler = $this->getConfiguredHandler($handlerConfiguration);
-            }
+            $processors = [];
 
-            if (is_array($handlerConfiguration)) {
-                $handlerIdentifier = $identifier . md5(json_encode($handlerConfiguration));
-                $handler = $this->instanciateHandler($handlerIdentifier, $handlerConfiguration);
-            }
+            $handler = $this->instantiateObject($handlerConfiguration['handler']);
 
             if ($handler !== null) {
+
+                /**
+                 * Customizing the log format
+                 */
+                if (array_key_exists('formatter', $handlerConfiguration)) {
+                    $formatter = $this->instantiateObject($handlerConfiguration['formatter']);
+                    if ($formatter !== null) {
+                        $handler->setFormatter($formatter);
+                    }
+                }
+
+                /**
+                 * Adding extra data in the records
+                 */
+                if (array_key_exists('processors', $handlerConfiguration)) {
+                    foreach ($handlerConfiguration['processors'] as $processorConfiguration) {
+                        $processors[] = $this->instantiateObject($processorConfiguration);
+                    }
+                }
+
+                if ($processors !== []) {
+                    foreach ($processors as $processor) {
+                        $handler->pushProcessor($processor);
+                    }
+                }
+
                 $logger->pushHandler($handler);
             }
         }
@@ -89,97 +135,32 @@ class LoggerFactory implements PsrLoggerFactoryInterface
     }
 
     /**
-     * @param array $configuration
-     */
-    public function injectConfiguration(array $configuration)
-    {
-        $this->configuration = $configuration;
-    }
-
-    /**
-     * Creates a monolog instance.
-     *
-     * @param string $identifier An identifier for the logger
-     * @param array $configuration
-     * @return Logger
-     */
-    public function createFromConfiguation($identifier, array $configuration)
-    {
-        if (isset($this->loggerInstances[$identifier])) {
-            return $this->loggerInstances[$identifier];
-        }
-
-        $logger = new Logger($identifier);
-
-        $handlerSorter = new PositionalArraySorter($configuration['handler']);
-        foreach ($handlerSorter->toArray() as $index => $handlerConfiguration) {
-            if (is_string($handlerConfiguration)) {
-                $handler = $this->getConfiguredHandler($handlerConfiguration);
-            }
-
-            if (is_array($handlerConfiguration)) {
-                $handlerIdentifier = $identifier . md5(json_encode($handlerConfiguration));
-                $handler = $this->instanciateHandler($handlerIdentifier, $handlerConfiguration);
-            }
-
-            if ($handler !== null) {
-                $logger->pushHandler($handler);
-            }
-        }
-
-        $this->loggerInstances[$identifier] = $logger;
-
-        return $logger;
-    }
-
-    /**
-     * @param $identifier
-     * @return HandlerInterface
-     * @throws InvalidConfigurationException
-     * @api
-     */
-    public function getConfiguredHandler($identifier)
-    {
-        if (!isset($this->configuration['handler'][$identifier])) {
-            throw new InvalidConfigurationException(sprintf('The required handler configuration for the given identifier "%s" was not found. Please configure a logger with this identifier in "Langeland.Monolog.handler"', $identifier), 1436767040);
-        }
-
-        return $this->instanciateHandler($identifier, $this->configuration['handler'][$identifier]);
-    }
-
-    /**
-     * Home brew singleton because it is used so early.
-     *
-     * @return LoggerFactory
-     */
-    public static function getInstance()
-    {
-        if (static::$instance === null) {
-            static::$instance = new static();
-        }
-
-        return static::$instance;
-    }
-
-    /**
-     * @param string $identifier
-     * @param array $handlerConfiguration
-     * @return HandlerInterface
+     * @param $configuration
+     * @return mixed
      * @throws InvalidConfigurationException
      */
-    protected function instanciateHandler($identifier, $handlerConfiguration)
+    protected function instantiateObject($configuration)
     {
-        if (!isset($this->handlerInstances[$identifier])) {
-            $handlerClass = isset($handlerConfiguration['className']) ? $handlerConfiguration['className'] : null;
 
-            if (!class_exists($handlerClass)) {
-                throw new InvalidConfigurationException(sprintf('The given handler class "%s" does not exist, please check configuration for handler "%s".', $handlerClass, $identifier), 1436767219);
+        if (is_string($configuration)) {
+            $className = $configuration;
+            $arguments = [];
+        } elseif (is_array($configuration)) {
+            $className = $configuration['className'];
+            $arguments = isset($configuration['arguments']) ? $configuration['arguments'] : null;
+        } else {
+            throw new InvalidConfigurationException('Invalid config', 1559295599);
+        }
+        $identifier = $className . md5(json_encode($arguments));
+
+        if (!isset($this->instances[$identifier])) {
+            if (!class_exists($className)) {
+                throw new InvalidConfigurationException(sprintf('The given formatter class "%s" does not exist, please check configuration for formatter "%s".', $formatterClass, $identifier), 1559242632);
             }
-
-            $arguments = (isset($handlerConfiguration['arguments']) && is_array($handlerConfiguration['arguments'])) ? $handlerConfiguration['arguments'] : [];
-            $this->handlerInstances[$identifier] = ObjectAccess::instantiateClass($handlerClass, $arguments);
+            $this->instances[$identifier] = ObjectAccess::instantiateClass($className, $arguments);
         }
 
-        return $this->handlerInstances[$identifier];
+        return $this->instances[$identifier];
     }
+
 }
